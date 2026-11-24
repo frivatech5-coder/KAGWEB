@@ -312,32 +312,6 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
           </Field>
         </div>
 
-        <Field id="dir-car" label="Directions by car">
-          <textarea
-            id="dir-car"
-            rows={2}
-            value={directions.drivingDirections}
-            onChange={(e) => {
-              setDirections({ ...directions, drivingDirections: e.target.value });
-              markDirty();
-            }}
-            className={textareaCls}
-          />
-        </Field>
-
-        <Field id="dir-matatu" label="Directions by matatu">
-          <textarea
-            id="dir-matatu"
-            rows={2}
-            value={directions.matatuDirections}
-            onChange={(e) => {
-              setDirections({ ...directions, matatuDirections: e.target.value });
-              markDirty();
-            }}
-            className={textareaCls}
-          />
-        </Field>
-
         <div className="grid sm:grid-cols-2 gap-4">
           <Field id="dir-arrival" label="Best time to arrive" helper="e.g. 9:45 AM for morning tea & welcome">
             <input

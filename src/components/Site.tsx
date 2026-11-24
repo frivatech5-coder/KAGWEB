@@ -239,8 +239,6 @@ export const Visit: React.FC<S> = ({ settings }) => {
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-5">
           <p className="flex gap-3"><MapPin className="text-clay shrink-0 mt-1" /><span><b>{d.addressTitle}</b><br />{d.addressDetails}</span></p>
-          <p><b>By car:</b> {d.drivingDirections}</p>
-          <p><b>By matatu:</b> {d.matatuDirections}</p>
           <p className="bg-sand rounded-xl p-4"><b>Tip:</b> arrive around {d.arrivalAdvice}</p>
           <div className="flex flex-wrap gap-3 pt-2">
             <a className="btn btn-clay" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${q}`}>Get directions</a>
