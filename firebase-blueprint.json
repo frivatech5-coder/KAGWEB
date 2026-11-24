@@ -1,0 +1,275 @@
+{
+  "entities": {
+    "ChurchSettings": {
+      "title": "ChurchSettings",
+      "description": "Global parish configurations, content sections, images, schedules, and M-Pesa details for KAG Emmanuel Church Witima.",
+      "type": "object",
+      "properties": {
+        "churchName": {
+          "type": "string",
+          "description": "Name of the church",
+          "maxLength": 200
+        },
+        "pastorName": {
+          "type": "string",
+          "description": "Senior Pastor name",
+          "maxLength": 200
+        },
+        "locationString": {
+          "type": "string",
+          "description": "Location description",
+          "maxLength": 300
+        },
+        "annualTheme": {
+          "type": "string",
+          "description": "Spiritual theme of the year",
+          "maxLength": 300
+        },
+        "themeScripture": {
+          "type": "string",
+          "description": "Scripture for the theme",
+          "maxLength": 300
+        },
+        "mpesa": {
+          "type": "object",
+          "description": "Safaricom M-Pesa payment and contact coordinates"
+        },
+        "hero": {
+          "type": "object",
+          "description": "Hero section content, headlines, and visual image URL"
+        },
+        "scripture": {
+          "type": "object",
+          "description": "Scripture meditation interlude text and spiritual pillars"
+        },
+        "story": {
+          "type": "object",
+          "description": "Heritage story of Witima, essays, and landscape visual image URL"
+        },
+        "pastor": {
+          "type": "object",
+          "description": "Pastor Sarah profile, portrait image URL, and pastoral letter"
+        },
+        "schedules": {
+          "type": "array",
+          "description": "List of weekly service schedule items"
+        },
+        "sermons": {
+          "type": "array",
+          "description": "Sermon archive entries with YouTube video IDs and summaries"
+        },
+        "ministries": {
+          "type": "array",
+          "description": "Church ministries (Men, Women, Youth, Children, Compassion)"
+        },
+        "events": {
+          "type": "array",
+          "description": "Upcoming seasonal convocations and gatherings"
+        },
+        "gallery": {
+          "type": "array",
+          "description": "Fellowship and community photo gallery collection"
+        },
+        "giving": {
+          "type": "object",
+          "description": "Sacred stewardship and giving copy"
+        },
+        "directions": {
+          "type": "object",
+          "description": "Travel directions, address, and arrival guidance"
+        },
+        "footer": {
+          "type": "object",
+          "description": "Footer summary, motto, and grand headline"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["churchName", "pastorName", "mpesa", "schedules"]
+    },
+    "PrayerPetition": {
+      "title": "PrayerPetition",
+      "description": "Confidential or public prayer requests submitted to the pastoral altar.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the petitioner or anonymous",
+          "maxLength": 100
+        },
+        "contact": {
+          "type": "string",
+          "description": "Optional phone or email",
+          "maxLength": 100
+        },
+        "category": {
+          "type": "string",
+          "description": "Focus category of petition",
+          "maxLength": 100
+        },
+        "requestText": {
+          "type": "string",
+          "description": "The prayer request content",
+          "maxLength": 3000
+        },
+        "isConfidential": {
+          "type": "boolean",
+          "description": "Whether confidential for Pastor only"
+        },
+        "prayedFor": {
+          "type": "boolean",
+          "description": "Whether church leaders have marked this petition as prayed for"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Submission ISO timestamp"
+        }
+      },
+      "required": ["requestText", "category"]
+    },
+    "MusicTrack": {
+      "title": "MusicTrack",
+      "description": "Audio tracks uploaded by the church admin for streaming and download.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Song title",
+          "maxLength": 200
+        },
+        "artist": {
+          "type": "string",
+          "description": "Singer or choir name",
+          "maxLength": 200
+        },
+        "url": {
+          "type": "string",
+          "description": "Firebase Storage download URL",
+          "maxLength": 2000
+        },
+        "storagePath": {
+          "type": "string",
+          "description": "Object path in Firebase Storage",
+          "maxLength": 500
+        },
+        "size": {
+          "type": "number",
+          "description": "File size in bytes"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Upload ISO timestamp"
+        }
+      },
+      "required": ["title", "url", "storagePath", "size", "createdAt"]
+    },
+    "AdminEmail": {
+      "title": "AdminEmail",
+      "description": "Additional Google emails authorized by the primary church admin to edit website content and view prayer requests.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "Lowercase Google account email address"
+        },
+        "addedBy": {
+          "type": "string",
+          "description": "Email of the admin who added this leader"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when added"
+        }
+      },
+      "required": ["email"]
+    },
+    "LiveStatus": {
+      "title": "LiveStatus",
+      "description": "Current online livestream configuration (YouTube Live or Google Meet) and upcoming service countdown.",
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["off", "youtube", "youtube_channel", "meet"],
+          "description": "Streaming mode"
+        },
+        "title": {
+          "type": "string",
+          "description": "Service title",
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "description": "Short welcome message",
+          "maxLength": 1000
+        },
+        "youtubeVideoId": {
+          "type": "string",
+          "description": "11-character YouTube video ID",
+          "maxLength": 20
+        },
+        "youtubeChannelId": {
+          "type": "string",
+          "description": "24-character UC... YouTube channel ID",
+          "maxLength": 40
+        },
+        "meetUrl": {
+          "type": "string",
+          "description": "Validated https://meet.google.com/... URL",
+          "maxLength": 200
+        },
+        "showMeetButton": {
+          "type": "boolean",
+          "description": "Whether to also show a Google Meet button beside YouTube"
+        },
+        "isLive": {
+          "type": "boolean",
+          "description": "Whether the church is currently live"
+        },
+        "nextStartsAt": {
+          "type": "string",
+          "description": "Optional ISO timestamp for the next scheduled service countdown"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["mode", "title", "isLive"]
+    }
+  },
+  "firestore": {
+    "/settings/{settingsId}": {
+      "schema": {
+        "$ref": "#/entities/ChurchSettings"
+      },
+      "description": "Parish global settings, all content sections, and service schedules"
+    },
+    "/prayer_petitions/{petitionId}": {
+      "schema": {
+        "$ref": "#/entities/PrayerPetition"
+      },
+      "description": "Congregation prayer petitions submitted via the website"
+    },
+    "/music/{trackId}": {
+      "schema": {
+        "$ref": "#/entities/MusicTrack"
+      },
+      "description": "Choir and worship songs available for playback and download"
+    },
+    "/admin_emails/{email}": {
+      "schema": {
+        "$ref": "#/entities/AdminEmail"
+      },
+      "description": "Authorized volunteer and pastoral leader Google accounts"
+    },
+    "/live/{liveId}": {
+      "schema": {
+        "$ref": "#/entities/LiveStatus"
+      },
+      "description": "Live streaming state (live/current document)"
+    }
+  }
+}

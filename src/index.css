@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Nunito Sans", system-ui, sans-serif;
+  --font-hand: "Caveat", "Segoe Script", cursive;
+  --color-paper: #f6f0e4;
+  --color-sand: #ece3d0;
+  --color-ink: #2b251d;
+  --color-pine: #1f4034;
+  --color-clay: #b66a43;
+  --color-gold: #b69a62;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+body { font-family: var(--font-sans); background: var(--color-paper); color: var(--color-ink); -webkit-font-smoothing: antialiased; }
+h1, h2, h3 { font-family: var(--font-display); }
+
+/* Soft paper grain so it doesn't feel like a flat template */
+body::before {
+  content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 60; opacity: .035;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+}
+
+/* Hand-drawn wavy underline */
+.scribble { background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='10' viewBox='0 0 120 10'><path d='M2 6 C 20 1, 35 9, 55 5 S 95 2, 118 6' fill='none' stroke='%23b66a43' stroke-width='3' stroke-linecap='round'/></svg>") no-repeat bottom left / 100% 10px; padding-bottom: .35rem; }
+
+.rise { animation: rise .7s ease both; }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rise { animation: none; } html { scroll-behavior: auto; } }
+
+:focus-visible { outline: 3px solid var(--color-clay); outline-offset: 3px; border-radius: 4px; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 48px; padding: .7rem 1.4rem; border-radius: 999px; font-weight: 700; font-size: .95rem; transition: transform .15s, background .2s; }
+.btn:active { transform: scale(.97); }
+.btn-clay { background: var(--color-clay); color: #fff; }
+.btn-clay:hover { background: #a05a37; }
+.btn-line { border: 2px solid currentColor; }

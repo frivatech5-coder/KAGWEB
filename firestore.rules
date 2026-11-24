@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && (
+          request.auth.token.email.lower() in ['frivatech5@gmail.com']
+          || exists(/databases/$(database)/documents/admin_emails/$(request.auth.token.email.lower()))
+          || exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        );
+    }
+
+    // Parish Church Settings (public read, admin-only write)
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.data.churchName is string
+        && request.resource.data.churchName.size() <= 200;
+    }
+
+    // Music tracks (public read, admin create/update/delete)
+    match /music/{trackId} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 200;
+      allow delete: if isAdmin();
+    }
+
+    // Prayer petitions (anyone can submit; only church admins can read, mark prayedFor, or delete)
+    match /prayer_petitions/{petitionId} {
+      allow create: if request.resource.data.requestText is string
+        && request.resource.data.requestText.size() > 0
+        && request.resource.data.requestText.size() <= 3000;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Extra admin Google emails managed from the Admin -> Admins tab
+    match /admin_emails/{email} {
+      allow read: if isSignedIn()
+        && (isAdmin() || (request.auth.token.email != null && request.auth.token.email.lower() == email));
+      allow write: if isAdmin();
+    }
+
+    // Watch Live state (public read, admin-only write with safe URL validation)
+    match /live/{id} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.data.mode in ['off', 'youtube', 'youtube_channel', 'meet']
+        && request.resource.data.title is string && request.resource.data.title.size() <= 200
+        && request.resource.data.message is string && request.resource.data.message.size() <= 1000
+        && request.resource.data.youtubeVideoId is string && request.resource.data.youtubeVideoId.size() <= 20
+        && request.resource.data.youtubeChannelId is string && request.resource.data.youtubeChannelId.size() <= 40
+        && (request.resource.data.meetUrl == '' || request.resource.data.meetUrl.matches('^https://meet\\.google\\.com/.*'))
+        && request.resource.data.showMeetButton is bool
+        && request.resource.data.isLive is bool;
+    }
+
+    // Legacy UID admin list (read-only for signed-in checks)
+    match /admins/{adminId} {
+      allow read: if isSignedIn() && (isAdmin() || request.auth.uid == adminId);
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "KAG Emmanuel Church Witima",
+  "description": "KAG (Kenya Assemblies of God) church. The sacred editorial sanctuary and community home for faith in Witima, Othaya, Nyeri County, Kenya. Led by Pastor Sarah Waweru.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

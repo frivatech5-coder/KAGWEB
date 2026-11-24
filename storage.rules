@@ -1,0 +1,27 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Also update ADMIN_EMAILS in src/lib/firebase.ts and firestore.rules when adding uploaders
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.lower() in ['frivatech5@gmail.com'];
+    }
+
+    match /music/{file} {
+      allow read: if true;
+      allow write: if isAdmin() && (
+        request.method == 'delete'
+        || (request.resource.contentType.matches('audio/.*') && request.resource.size < 40 * 1024 * 1024)
+      );
+    }
+
+    match /site/{file} {
+      allow read: if true;
+      allow write: if isAdmin() && (
+        request.method == 'delete'
+        || (request.resource.contentType.matches('image/.*') && request.resource.size < 3 * 1024 * 1024)
+      );
+    }
+  }
+}
