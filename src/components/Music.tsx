@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Download, Play, Pause, Music2 } from 'lucide-react';
 import type { MusicTrack } from '../lib/firebase';
+import { Reveal } from './Site';
 
 const mb = (n: number) => (n / 1048576).toFixed(1) + ' MB';
 
@@ -37,8 +38,8 @@ export const Music: React.FC = () => {
   };
 
   return (
-    <section id="music" className="py-16 md:py-24 bg-sand">
-      <div className="mx-auto max-w-4xl px-5">
+    <section id="music" className="py-12 md:py-20 bg-sand">
+      <Reveal className="mx-auto max-w-4xl px-5">
         <p className="font-hand text-2xl text-clay">Worship with us at home</p>
         <h2 className="text-3xl md:text-5xl font-bold text-pine mt-1">
           Our songs, <span className="scribble">free to download</span>
@@ -68,12 +69,15 @@ export const Music: React.FC = () => {
               <div className="min-w-0 flex-1">
                 <p className="font-bold truncate">{t.title}</p>
                 <p className="text-sm text-ink/60 truncate">
-                  {t.artist || 'KAG Emmanuel Witima'} · {mb(t.size)}
+                  {t.artist || 'KAG Emmanuel Witima'}
+                  {t.size ? ` · ${mb(t.size)}` : ''}
                 </p>
               </div>
               {t.url?.trim() && (
                 <a
                   href={t.url.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn btn-line text-pine !min-h-11 !px-4 !py-2 text-sm"
                   aria-label={'Download ' + t.title}
                 >
@@ -83,7 +87,7 @@ export const Music: React.FC = () => {
             </li>
           ))}
         </ul>
-      </div>
+      </Reveal>
     </section>
   );
 };

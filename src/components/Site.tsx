@@ -1,9 +1,54 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Menu, X, MapPin, Phone, MessageCircle, Copy, Check, Play, Clock, HandHeart } from 'lucide-react';
 import type { ChurchSettings } from '../types/church';
 
 type S = { settings: ChurchSettings };
 const links = [['Visit', '#visit'], ['Times', '#times'], ['Sermons', '#sermons'], ['Music', '#music'], ['Events', '#events'], ['Give', '#give']];
+
+/** Fades + slides content in as it scrolls into view (instant for reduced-motion users). */
+export const Reveal: React.FC<{ children: React.ReactNode; className?: string; delay?: number }> = ({
+  children,
+  className = '',
+  delay = 0,
+}) => {
+  const el = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    const node = el.current;
+    if (
+      !node ||
+      typeof IntersectionObserver === 'undefined' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      setShown(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShown(true);
+          io.disconnect();
+        }
+      },
+      { rootMargin: '0px 0px -8% 0px', threshold: 0.05 }
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={el}
+      style={{ transitionDelay: shown ? `${delay}ms` : '0ms' }}
+      className={`transition-all duration-700 ease-out ${
+        shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      } ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
 
 const Heading: React.FC<{ hand: string; title: string; light?: boolean }> = ({ hand, title, light }) => (
   <div className="mb-8 md:mb-12">
@@ -12,7 +57,11 @@ const Heading: React.FC<{ hand: string; title: string; light?: boolean }> = ({ h
   </div>
 );
 const Wrap: React.FC<{ id: string; className?: string; children: React.ReactNode }> = ({ id, className = '', children }) => (
-  <section id={id} className={`py-16 md:py-24 ${className}`}><div className="mx-auto max-w-5xl px-5">{children}</div></section>
+  <section id={id} className={`py-12 md:py-20 ${className}`}>
+    <div className="mx-auto max-w-5xl px-5">
+      <Reveal>{children}</Reveal>
+    </div>
+  </section>
 );
 
 export const Header: React.FC<S & { onPrayer: () => void; isLive?: boolean }> = ({
@@ -67,7 +116,7 @@ export const Hero: React.FC<S & { onPrayer: () => void }> = ({ settings, onPraye
   const heroSrc = !rawHeroSrc || rawHeroSrc === '/images/hero_worship_witima.webp' ? HERO_CROSS_IMAGE : rawHeroSrc;
 
   return (
-    <section id="top" className="relative bg-pine min-h-[78vh] flex items-end text-white overflow-hidden">
+    <section id="top" className="relative bg-pine min-h-[calc(100svh-4rem)] flex items-end text-white overflow-hidden">
       <img
         src={heroSrc}
         alt="Cross on a hill at sunset behind KAG Emmanuel Church Witima"
@@ -145,26 +194,28 @@ export const Sermons: React.FC<S> = ({ settings }) => {
     <Wrap id="sermons">
       <Heading hand="Hear the Word" title="Recent sermons" />
       <div className="grid sm:grid-cols-2 gap-6">
-        {settings.sermons.slice(0, 4).map((s) => (
-          <article key={s.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
-            <div className="relative aspect-video bg-black">
-              {active === s.id && s.youtubeId?.trim() ? (
-                <iframe className="absolute inset-0 size-full" title={s.title} allowFullScreen allow="autoplay; encrypted-media"
-                  src={`https://www.youtube-nocookie.com/embed/${s.youtubeId.trim()}?autoplay=1&rel=0`} />
-              ) : (
-                <button onClick={() => s.youtubeId?.trim() && setActive(s.id)} aria-label={'Play ' + s.title} className="group absolute inset-0">
-                  {s.youtubeId?.trim() && <img loading="lazy" alt="" src={`https://i.ytimg.com/vi/${s.youtubeId.trim()}/hqdefault.jpg`} className="size-full object-cover opacity-80" />}
-                  <span className="absolute inset-0 grid place-items-center"><span className="grid place-items-center size-14 rounded-full bg-clay text-white group-hover:scale-110 transition"><Play className="ml-1" /></span></span>
-                </button>
-              )}
-            </div>
-            <div className="p-5">
-              <p className="text-xs font-bold uppercase tracking-wide text-clay">{s.series} · {s.date.replace(/^\w+,\s*/, '')}</p>
-              <h3 className="font-bold text-xl text-pine mt-1">{s.title}</h3>
-              <p className="text-sm text-ink/60 mt-1">{s.speaker} · {s.scripture}</p>
-              <p className="mt-3 text-ink/80 italic">“{s.keyTakeaway}”</p>
-            </div>
-          </article>
+        {settings.sermons.slice(0, 4).map((s, i) => (
+          <Reveal key={s.id} delay={i * 90}>
+            <article className="bg-white rounded-2xl overflow-hidden shadow-sm h-full">
+              <div className="relative aspect-video bg-black">
+                {active === s.id && s.youtubeId?.trim() ? (
+                  <iframe className="absolute inset-0 size-full" title={s.title} allowFullScreen allow="autoplay; encrypted-media"
+                    src={`https://www.youtube-nocookie.com/embed/${s.youtubeId.trim()}?autoplay=1&rel=0`} />
+                ) : (
+                  <button onClick={() => s.youtubeId?.trim() && setActive(s.id)} aria-label={'Play ' + s.title} className="group absolute inset-0">
+                    {s.youtubeId?.trim() && <img loading="lazy" alt="" src={`https://i.ytimg.com/vi/${s.youtubeId.trim()}/hqdefault.jpg`} className="size-full object-cover opacity-80" />}
+                    <span className="absolute inset-0 grid place-items-center"><span className="grid place-items-center size-14 rounded-full bg-clay text-white group-hover:scale-110 transition"><Play className="ml-1" /></span></span>
+                  </button>
+                )}
+              </div>
+              <div className="p-5">
+                <p className="text-xs font-bold uppercase tracking-wide text-clay">{s.series} · {s.date.replace(/^\w+,\s*/, '')}</p>
+                <h3 className="font-bold text-xl text-pine mt-1">{s.title}</h3>
+                <p className="text-sm text-ink/60 mt-1">{s.speaker} · {s.scripture}</p>
+                <p className="mt-3 text-ink/80 italic">“{s.keyTakeaway}”</p>
+              </div>
+            </article>
+          </Reveal>
         ))}
       </div>
     </Wrap>

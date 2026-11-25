@@ -18,6 +18,7 @@ import {
   buildYouTubeWatchUrl,
   parseMeetUrl,
 } from '../lib/live';
+import { Reveal } from './Site';
 
 export const LiveBanner: React.FC<{
   live: LiveStatus;
@@ -225,9 +226,9 @@ export const LiveSection: React.FC<{ live: LiveStatus; churchName: string }> = (
       ref={sectionRef}
       id="live"
       aria-live="polite"
-      className="py-14 md:py-20 bg-sand border-b border-ink/10"
+      className="py-12 md:py-20 bg-sand border-b border-ink/10"
     >
-      <div className="mx-auto max-w-5xl px-5">
+      <Reveal className="mx-auto max-w-5xl px-5">
         {live.isLive ? (
           live.mode === 'meet' ? (
             <div className="bg-paper rounded-3xl p-6 sm:p-10 shadow-md border border-gold/40 max-w-3xl mx-auto">
@@ -479,7 +480,7 @@ export const LiveSection: React.FC<{ live: LiveStatus; churchName: string }> = (
             </a>
           </div>
         )}
-      </div>
+      </Reveal>
     </section>
   );
 };

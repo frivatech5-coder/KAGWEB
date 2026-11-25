@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, Music2, Pause, Pencil, Play, Upload, X, AlertCircle } from 'lucide-react';
+import { Check, Link2, Music2, Pause, Pencil, Play, Upload, X, AlertCircle } from 'lucide-react';
 import {
+  addTrackByLink,
   deleteTrack,
+  normaliseAudioLink,
   subscribeToMusic,
   updateTrack,
   uploadTrack,
@@ -14,15 +16,19 @@ const formatMB = (bytes: number) => `${(bytes / 1048576).toFixed(1)} MB`;
 
 export const MusicTab: React.FC = () => {
   const [tracks, setTracks] = useState<MusicTrack[] | null>(null);
+  const [mode, setMode] = useState<'file' | 'link'>('file');
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [link, setLink] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const [uploadPct, setUploadPct] = useState<number | null>(null);
+  const [savingLink, setSavingLink] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [titleError, setTitleError] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
 
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,6 +79,7 @@ export const MusicTab: React.FC = () => {
     e.preventDefault();
     setTitleError(null);
     setFileError(null);
+    setLinkError(null);
     setUploadError(null);
     setUploadSuccess(null);
 
@@ -81,37 +88,60 @@ export const MusicTab: React.FC = () => {
       setTitleError('Please enter a song title.');
       hasErr = true;
     }
-    if (!file) {
-      setFileError('Please choose an audio file to upload.');
+
+    if (mode === 'file') {
+      if (!file) {
+        setFileError('Please choose an audio file to upload.');
+        hasErr = true;
+      }
+      if (hasErr || !file) return;
+
+      setUploadPct(0);
+      try {
+        await uploadTrack(
+          file,
+          { title: title.trim(), artist: artist.trim() },
+          setUploadPct,
+          (cancel) => {
+            cancelUploadRef.current = cancel;
+          }
+        );
+        setUploadSuccess(`"${title.trim()}" is now live on the website.`);
+        setTitle('');
+        setArtist('');
+        setFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      } catch (err) {
+        const code = (err as { code?: string })?.code ?? '';
+        if (code === 'storage/canceled') {
+          setUploadError('Upload stopped.');
+        } else {
+          setUploadError(formatAdminError(err));
+        }
+      } finally {
+        cancelUploadRef.current = null;
+        setUploadPct(null);
+      }
+      return;
+    }
+
+    if (!normaliseAudioLink(link)) {
+      setLinkError('Please paste a full link starting with https:// (Google Drive share link or direct .mp3 link).');
       hasErr = true;
     }
-    if (hasErr || !file) return;
+    if (hasErr) return;
 
-    setUploadPct(0);
+    setSavingLink(true);
     try {
-      await uploadTrack(
-        file,
-        { title: title.trim(), artist: artist.trim() },
-        setUploadPct,
-        (cancel) => {
-          cancelUploadRef.current = cancel;
-        }
-      );
+      await addTrackByLink({ title: title.trim(), artist: artist.trim() }, link);
       setUploadSuccess(`"${title.trim()}" is now live on the website.`);
       setTitle('');
       setArtist('');
-      setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      setLink('');
     } catch (err) {
-      const code = (err as { code?: string })?.code ?? '';
-      if (code === 'storage/canceled') {
-        setUploadError('Upload cancelled.');
-      } else {
-        setUploadError(formatAdminError(err));
-      }
+      setUploadError(formatAdminError(err));
     } finally {
-      cancelUploadRef.current = null;
-      setUploadPct(null);
+      setSavingLink(false);
     }
   };
 
@@ -178,56 +208,112 @@ export const MusicTab: React.FC = () => {
       </div>
 
       <form onSubmit={handleUpload} noValidate className="bg-white rounded-2xl border border-ink/10 p-4 sm:p-6 space-y-4 shadow-sm">
-        <h3 className="font-display text-lg font-bold text-pine">Upload a new song</h3>
-
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragActive(true);
-          }}
-          onDragLeave={() => setDragActive(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragActive(false);
-            const dropped = e.dataTransfer.files?.[0] ?? null;
-            pickFile(dropped);
-          }}
-          className={`rounded-2xl border-2 border-dashed p-5 text-center transition ${
-            dragActive ? 'border-clay bg-clay/5' : 'border-gold/70 bg-paper/60'
-          }`}
-        >
-          <input
-            ref={fileInputRef}
-            id="music-file-input"
-            type="file"
-            accept="audio/*,.mp3,.m4a,.wav,.aac"
-            onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
-            className="sr-only"
-          />
-          <Music2 size={28} className="mx-auto text-pine/70 mb-2" />
-          {file ? (
-            <div className="space-y-1">
-              <p className="font-bold text-pine break-all">{file.name}</p>
-              <p className="text-xs text-ink/65">{formatMB(file.size)} · Ready to upload</p>
-            </div>
-          ) : (
-            <p className="text-sm text-ink/75">
-              Drag an audio file here, or tap the button below to choose from your phone or computer.
-            </p>
-          )}
-          <label
-            htmlFor="music-file-input"
-            className="mt-3 inline-flex items-center justify-center gap-2 min-h-12 px-5 rounded-full bg-pine text-white text-sm font-bold cursor-pointer hover:bg-clay transition"
-          >
-            <Upload size={18} />
-            <span>{file ? 'Choose a different file' : 'Choose audio file'}</span>
-          </label>
-          {fileError && (
-            <p role="alert" className="mt-2 text-xs font-semibold text-red-700">
-              {fileError}
-            </p>
-          )}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="font-display text-lg font-bold text-pine">Add a new song</h3>
+          <div className="flex gap-1 bg-sand rounded-full p-1">
+            <button
+              type="button"
+              disabled={uploadPct !== null || savingLink}
+              onClick={() => {
+                setMode('file');
+                setUploadError(null);
+                setLinkError(null);
+              }}
+              className={`min-h-10 px-4 rounded-full text-sm font-bold transition inline-flex items-center gap-1.5 ${
+                mode === 'file' ? 'bg-pine text-white shadow-sm' : 'text-pine hover:bg-paper/60'
+              }`}
+            >
+              <Upload size={15} />
+              <span>Upload a file</span>
+            </button>
+            <button
+              type="button"
+              disabled={uploadPct !== null || savingLink}
+              onClick={() => {
+                setMode('link');
+                setUploadError(null);
+                setFileError(null);
+              }}
+              className={`min-h-10 px-4 rounded-full text-sm font-bold transition inline-flex items-center gap-1.5 ${
+                mode === 'link' ? 'bg-pine text-white shadow-sm' : 'text-pine hover:bg-paper/60'
+              }`}
+            >
+              <Link2 size={15} />
+              <span>Paste a link</span>
+            </button>
+          </div>
         </div>
+
+        {mode === 'file' ? (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragActive(true);
+            }}
+            onDragLeave={() => setDragActive(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragActive(false);
+              const dropped = e.dataTransfer.files?.[0] ?? null;
+              pickFile(dropped);
+            }}
+            className={`rounded-2xl border-2 border-dashed p-5 text-center transition ${
+              dragActive ? 'border-clay bg-clay/5' : 'border-gold/70 bg-paper/60'
+            }`}
+          >
+            <input
+              ref={fileInputRef}
+              id="music-file-input"
+              type="file"
+              accept="audio/*,.mp3,.m4a,.wav,.aac"
+              onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
+              className="sr-only"
+            />
+            <Music2 size={28} className="mx-auto text-pine/70 mb-2" />
+            {file ? (
+              <div className="space-y-1">
+                <p className="font-bold text-pine break-all">{file.name}</p>
+                <p className="text-xs text-ink/65">{formatMB(file.size)} · Ready to upload</p>
+              </div>
+            ) : (
+              <p className="text-sm text-ink/75">
+                Drag an audio file here, or tap the button below to choose from your phone or computer.
+              </p>
+            )}
+            <label
+              htmlFor="music-file-input"
+              className="mt-3 inline-flex items-center justify-center gap-2 min-h-12 px-5 rounded-full bg-pine text-white text-sm font-bold cursor-pointer hover:bg-clay transition"
+            >
+              <Upload size={18} />
+              <span>{file ? 'Choose a different file' : 'Choose audio file'}</span>
+            </label>
+            {fileError && (
+              <p role="alert" className="mt-2 text-xs font-semibold text-red-700">
+                {fileError}
+              </p>
+            )}
+          </div>
+        ) : (
+          <Field
+            id="music-link-input"
+            label="Google Drive share link or direct .mp3 link"
+            helper='Upload the song to Google Drive, set sharing to "Anyone with the link", then paste the link here. Works without Firebase Storage.'
+            error={linkError ?? undefined}
+            required
+          >
+            <input
+              id="music-link-input"
+              type="url"
+              value={link}
+              onChange={(e) => {
+                setLink(e.target.value);
+                setLinkError(null);
+              }}
+              placeholder="https://drive.google.com/file/d/… or direct .mp3 link"
+              className={inputCls}
+            />
+          </Field>
+        )}
 
         <div className="grid sm:grid-cols-2 gap-4">
           <Field
@@ -300,11 +386,19 @@ export const MusicTab: React.FC = () => {
 
         <button
           type="submit"
-          disabled={uploadPct !== null}
+          disabled={uploadPct !== null || savingLink}
           className="w-full sm:w-auto min-h-12 px-6 rounded-full bg-clay text-white font-bold text-sm hover:bg-[#a05a37] disabled:opacity-50 transition inline-flex items-center justify-center gap-2"
         >
-          <Upload size={18} />
-          <span>{uploadPct !== null ? `Uploading ${uploadPct}%...` : 'Upload song'}</span>
+          {mode === 'file' ? <Upload size={18} /> : <Link2 size={18} />}
+          <span>
+            {uploadPct !== null
+              ? `Uploading ${uploadPct}%...`
+              : savingLink
+              ? 'Saving song...'
+              : mode === 'file'
+              ? 'Upload song'
+              : 'Add song'}
+          </span>
         </button>
       </form>
 
@@ -338,7 +432,8 @@ export const MusicTab: React.FC = () => {
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-pine truncate">{track.title}</p>
                     <p className="text-sm text-ink/65 truncate">
-                      {track.artist || 'KAG Emmanuel Witima'} · {formatMB(track.size)}
+                      {track.artist || 'KAG Emmanuel Witima'}
+                      {track.size ? ` · ${formatMB(track.size)}` : ' · Audio link'}
                     </p>
                   </div>
                 </div>

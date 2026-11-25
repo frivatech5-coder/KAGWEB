@@ -284,6 +284,21 @@ export function subscribeToMusic(onUpdate: (tracks: MusicTrack[]) => void, onErr
   );
 }
 
+const friendlyStorageError = (code: string) =>
+  ({
+    'storage/unauthorized': 'Permission denied. Sign in with the admin Google account and publish storage.rules.',
+    'storage/unauthenticated': 'You are not signed in. Sign in with Google and try again.',
+    'storage/bucket-not-found':
+      'Firebase Storage is not set up for this project yet. Use "Paste a link" instead, or enable Storage in the Firebase console.',
+    'storage/project-not-found':
+      'Firebase Storage is not set up for this project yet. Use "Paste a link" instead, or enable Storage in the Firebase console.',
+    'storage/retry-limit-exceeded':
+      'Upload timed out. Storage may not be enabled (it can require the Blaze plan). Use "Paste a link" instead.',
+    'storage/canceled': 'Upload stopped.',
+    stalled:
+      'The upload never started. Firebase Storage is probably not enabled or not allowed for this project (new projects may need the Blaze plan). Use "Paste a link" instead.',
+  } as Record<string, string>)[code] || `Upload failed (${code}).`;
+
 export async function uploadTrack(
   file: File,
   meta: { title: string; artist: string },
@@ -292,25 +307,53 @@ export async function uploadTrack(
 ): Promise<void> {
   const { getStorage, ref, uploadBytesResumable, getDownloadURL } = await import('firebase/storage');
   const storage = getStorage(app);
+  storage.maxUploadRetryTime = 20000;
+  storage.maxOperationRetryTime = 20000;
+
   const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
   const storagePath = `music/${Date.now()}_${safe}`;
   const task = uploadBytesResumable(ref(storage, storagePath), file, {
     contentType: file.type || 'audio/mpeg',
     contentDisposition: `attachment; filename="${safe}"`,
   });
-  onCancelReady?.(() => task.cancel());
+
+  let watchdog: ReturnType<typeof setTimeout> | undefined;
+  onCancelReady?.(() => {
+    if (watchdog) clearTimeout(watchdog);
+    task.cancel();
+  });
 
   await new Promise<void>((resolve, reject) => {
+    let started = false;
+    watchdog = setTimeout(() => {
+      if (!started) {
+        task.cancel();
+        reject({ code: 'stalled' });
+      }
+    }, 15000);
+
     task.on(
       'state_changed',
       (s) => {
+        if (s.bytesTransferred > 0) started = true;
         if (s.totalBytes > 0) {
           onProgress(Math.round((s.bytesTransferred / s.totalBytes) * 100));
         }
       },
-      reject,
-      () => resolve()
+      (e) => {
+        if (watchdog) clearTimeout(watchdog);
+        reject(e);
+      },
+      () => {
+        if (watchdog) clearTimeout(watchdog);
+        resolve();
+      }
     );
+  }).catch((e) => {
+    const code = (e as { code?: string })?.code || 'unknown';
+    const err = new Error(friendlyStorageError(code)) as Error & { code?: string };
+    err.code = code;
+    throw err;
   });
 
   const url = await getDownloadURL(task.snapshot.ref);
@@ -319,6 +362,26 @@ export async function uploadTrack(
     url,
     storagePath,
     size: file.size,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+/** Works without Firebase Storage: paste a direct audio link or a Google Drive share link. */
+export function normaliseAudioLink(raw: string): string | null {
+  const u = raw.trim();
+  if (!/^https:\/\//i.test(u)) return null;
+  const drive = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:export=\w+&)?id=)([\w-]{20,})/);
+  return drive ? `https://drive.google.com/uc?export=download&id=${drive[1]}` : u;
+}
+
+export async function addTrackByLink(meta: { title: string; artist: string }, link: string): Promise<void> {
+  const url = normaliseAudioLink(link);
+  if (!url) throw new Error('Please paste a full link starting with https://');
+  await addDoc(collection(db, 'music'), {
+    ...meta,
+    url,
+    storagePath: '',
+    size: 0,
     createdAt: new Date().toISOString(),
   });
 }
@@ -406,6 +469,8 @@ export async function uploadSiteImage(
   try {
     const { getStorage, ref, uploadBytesResumable, getDownloadURL } = await import('firebase/storage');
     const storage = getStorage(app);
+    storage.maxUploadRetryTime = 12000;
+    storage.maxOperationRetryTime = 12000;
 
     const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_') || 'photo';
     const ext = optimizedBlob.type === 'image/jpeg' ? 'jpg' : 'webp';
@@ -414,18 +479,37 @@ export async function uploadSiteImage(
     const task = uploadBytesResumable(ref(storage, storagePath), optimizedBlob, {
       contentType: optimizedBlob.type || 'image/webp',
     });
-    onCancelReady?.(() => task.cancel());
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    onCancelReady?.(() => {
+      if (watchdog) clearTimeout(watchdog);
+      task.cancel();
+    });
 
     await new Promise<void>((resolve, reject) => {
+      let started = false;
+      watchdog = setTimeout(() => {
+        if (!started) {
+          task.cancel();
+          reject({ code: 'stalled' });
+        }
+      }, 10000);
+
       task.on(
         'state_changed',
         (s) => {
+          if (s.bytesTransferred > 0) started = true;
           if (s.totalBytes > 0) {
             onProgress(Math.round((s.bytesTransferred / s.totalBytes) * 100));
           }
         },
-        reject,
-        () => resolve()
+        (e) => {
+          if (watchdog) clearTimeout(watchdog);
+          reject(e);
+        },
+        () => {
+          if (watchdog) clearTimeout(watchdog);
+          resolve();
+        }
       );
     });
 
@@ -435,7 +519,7 @@ export async function uploadSiteImage(
     if (code === 'storage/canceled') {
       throw err;
     }
-    // Fallback when Storage rules are not yet published: embed a compact WebP photo (<= 160 KB) in Firestore settings
+    // Fallback when Storage rules are not yet published or Storage is disabled: embed a compact WebP photo (<= 160 KB) in Firestore settings
     onProgress(85);
     const compactBlob = await resizeImageToWebP(file, 720, 160 * 1024);
     const dataUrl = await blobToDataUrl(compactBlob);
