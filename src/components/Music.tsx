@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Download, Play, Pause, Music2 } from 'lucide-react';
 import type { MusicTrack } from '../lib/firebase';
-import { Reveal } from './Site';
+import { Reveal, ShareSectionButton } from './Site';
 
 const mb = (n: number) => (n / 1048576).toFixed(1) + ' MB';
 
@@ -40,10 +40,19 @@ export const Music: React.FC = () => {
   return (
     <section id="music" className="py-12 md:py-20 bg-sand">
       <Reveal className="mx-auto max-w-4xl px-5">
-        <p className="font-hand text-2xl text-clay">Worship with us at home</p>
-        <h2 className="text-3xl md:text-5xl font-bold text-pine mt-1">
-          Our songs, <span className="scribble">free to download</span>
-        </h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-hand text-2xl text-clay">Worship with us at home</p>
+            <h2 className="text-3xl md:text-5xl font-bold text-pine mt-1">
+              Our songs, <span className="scribble">free to download</span>
+            </h2>
+          </div>
+          <ShareSectionButton
+            anchor="#music"
+            title="Worship Songs · KAG Emmanuel Church Witima"
+            text="Listen to worship songs from KAG Emmanuel Witima:"
+          />
+        </div>
         <p className="mt-4 text-ink/75 max-w-xl">
           Songs recorded by our choir and worship team. Play them here, or download and share with your family and friends.
         </p>

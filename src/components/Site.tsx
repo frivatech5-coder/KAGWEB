@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, X, MapPin, Phone, MessageCircle, Copy, Check, Play, Clock, HandHeart } from 'lucide-react';
+import { Menu, X, MapPin, Phone, MessageCircle, Copy, Check, Play, Clock, HandHeart, Share2 } from 'lucide-react';
 import type { ChurchSettings } from '../types/church';
 
 type S = { settings: ChurchSettings };
@@ -50,10 +50,68 @@ export const Reveal: React.FC<{ children: React.ReactNode; className?: string; d
   );
 };
 
-const Heading: React.FC<{ hand: string; title: string; light?: boolean }> = ({ hand, title, light }) => (
-  <div className="mb-8 md:mb-12">
-    <p className={`font-hand text-2xl ${light ? 'text-gold' : 'text-clay'}`}>{hand}</p>
-    <h2 className={`text-3xl md:text-5xl font-bold ${light ? 'text-white' : 'text-pine'}`}>{title}</h2>
+export const ShareSectionButton: React.FC<{
+  anchor: string;
+  title: string;
+  text: string;
+  label?: string;
+}> = ({ anchor, title, text, label = 'Share' }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleShare = async () => {
+    const url = `${window.location.origin}/${anchor}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title, text: `${text} ${url}`, url });
+        return;
+      } catch (err) {
+        if ((err as { name?: string })?.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard?.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2400);
+    } catch {
+      // Ignore clipboard failure
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleShare}
+        className="btn btn-line text-pine !min-h-11 !px-4 !py-2 text-sm shrink-0"
+        aria-label={`${label} ${title}`}
+      >
+        {copied ? <Check size={16} /> : <Share2 size={16} />}
+        <span>{copied ? 'Link copied' : label}</span>
+      </button>
+      {copied && (
+        <div
+          role="status"
+          className="fixed bottom-5 inset-x-5 sm:left-auto sm:right-6 z-50 px-4 py-3 rounded-xl bg-pine text-white text-sm font-semibold shadow-xl"
+        >
+          Link copied
+        </div>
+      )}
+    </>
+  );
+};
+
+const Heading: React.FC<{ hand: string; title: string; light?: boolean; action?: React.ReactNode }> = ({
+  hand,
+  title,
+  light,
+  action,
+}) => (
+  <div className="mb-8 md:mb-12 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p className={`font-hand text-2xl ${light ? 'text-gold' : 'text-clay'}`}>{hand}</p>
+      <h2 className={`text-3xl md:text-5xl font-bold ${light ? 'text-white' : 'text-pine'}`}>{title}</h2>
+    </div>
+    {action}
   </div>
 );
 const Wrap: React.FC<{ id: string; className?: string; children: React.ReactNode }> = ({ id, className = '', children }) => (
@@ -77,6 +135,8 @@ export const Header: React.FC<S & { onPrayer: () => void; isLive?: boolean }> = 
           <img
             src="/assets/aistudio/Screenshot_2026-11-06_4.43.00_PM_71c4dc47.png"
             alt="Kenya Assemblies of God logo"
+            width={40}
+            height={40}
             className="h-10 w-10 object-contain shrink-0 brightness-110 contrast-125 mix-blend-multiply"
           />
           <span>KAG Emmanuel <span className="block text-xs font-sans font-semibold text-ink/60 -mt-0.5">Witima · Othaya</span></span>
@@ -192,7 +252,17 @@ export const Sermons: React.FC<S> = ({ settings }) => {
   const [active, setActive] = useState<string | null>(null);
   return (
     <Wrap id="sermons">
-      <Heading hand="Hear the Word" title="Recent sermons" />
+      <Heading
+        hand="Hear the Word"
+        title="Recent sermons"
+        action={
+          <ShareSectionButton
+            anchor="#sermons"
+            title="Sermons · KAG Emmanuel Church Witima"
+            text="Watch recent sermons from KAG Emmanuel Witima:"
+          />
+        }
+      />
       <div className="grid sm:grid-cols-2 gap-6">
         {settings.sermons.slice(0, 4).map((s, i) => (
           <Reveal key={s.id} delay={i * 90}>
@@ -313,6 +383,9 @@ export const Footer: React.FC<S & { onPrayer: () => void; onAdmin: () => void }>
             <img
               src="/assets/aistudio/Screenshot_2026-11-06_4.43.00_PM_71c4dc47.png"
               alt="Kenya Assemblies of God logo"
+              loading="lazy"
+              width={40}
+              height={40}
               className="h-10 w-10 object-contain brightness-110 contrast-125 mix-blend-multiply"
             />
           </div>
