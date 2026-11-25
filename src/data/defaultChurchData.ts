@@ -189,6 +189,12 @@ export const initialChurchSettings: ChurchSettings = {
     email: 'kagemmanuelwitima@gmail.com',
     physicalLocation: 'CXVM+CHX, Witima · Off Othaya-Chinga Road, Witima Market Centre, Nyeri County, Kenya',
   },
+  social: {
+    youtube: '',
+    facebook: '',
+    x: '',
+    tiktok: '',
+  },
   hero: {
     label: 'Sanctuary · Central Highlands',
     headlinePart1: 'KAG Emmanuel',

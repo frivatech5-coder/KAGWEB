@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import type { ChurchSettings } from '../../types/church';
+import { FaFacebook, FaTiktok, FaXTwitter, FaYoutube } from 'react-icons/fa6';
+import type { ChurchSettings, SocialLinksData } from '../../types/church';
+import { initialChurchSettings } from '../../data/defaultChurchData';
+import { cleanSocialUrl, type SocialPlatform } from '../../lib/social';
 import {
   Field,
   SaveBar,
@@ -8,6 +11,48 @@ import {
   textareaCls,
   type SaveStatus,
 } from './AdminShared';
+
+const SOCIAL_FIELDS: {
+  key: SocialPlatform;
+  label: string;
+  placeholder: string;
+  domainHint: string;
+  brandColorClass: string;
+  Icon: React.ComponentType<{ size?: number; className?: string; 'aria-hidden'?: boolean }>;
+}[] = [
+  {
+    key: 'youtube',
+    label: 'YouTube',
+    placeholder: 'https://www.youtube.com/@yourchannel',
+    domainHint: 'youtube.com / youtu.be',
+    brandColorClass: 'text-[#FF0000]',
+    Icon: FaYoutube,
+  },
+  {
+    key: 'facebook',
+    label: 'Facebook',
+    placeholder: 'https://www.facebook.com/yourpage',
+    domainHint: 'facebook.com / fb.com',
+    brandColorClass: 'text-[#1877F2]',
+    Icon: FaFacebook,
+  },
+  {
+    key: 'x',
+    label: 'X (Twitter)',
+    placeholder: 'https://x.com/yourhandle',
+    domainHint: 'x.com / twitter.com',
+    brandColorClass: 'text-[#000000]',
+    Icon: FaXTwitter,
+  },
+  {
+    key: 'tiktok',
+    label: 'TikTok',
+    placeholder: 'https://www.tiktok.com/@yourhandle',
+    domainHint: 'tiktok.com',
+    brandColorClass: 'text-[#000000]',
+    Icon: FaTiktok,
+  },
+];
 
 interface ContactGivingTabProps {
   settings: ChurchSettings;
@@ -21,6 +66,7 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
   onDirtyChange,
 }) => {
   const [mpesa, setMpesa] = useState(settings.mpesa);
+  const [social, setSocial] = useState<SocialLinksData>(settings.social ?? initialChurchSettings.social);
   const [givingQuote, setGivingQuote] = useState(settings.giving.quote);
   const [givingCitation, setGivingCitation] = useState(settings.giving.quoteCitation);
   const [directions, setDirections] = useState(settings.directions);
@@ -32,6 +78,7 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
   useEffect(() => {
     if (status === 'clean' || status === 'saved') {
       setMpesa(settings.mpesa);
+      setSocial(settings.social ?? initialChurchSettings.social);
       setGivingQuote(settings.giving.quote);
       setGivingCitation(settings.giving.quoteCitation);
       setDirections(settings.directions);
@@ -59,6 +106,18 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
     if (!mpesa.whatsappNumber.trim()) errs.whatsapp = 'Please enter a WhatsApp number.';
     if (!directions.addressTitle.trim()) errs.addressTitle = 'Please enter the church address heading.';
 
+    const cleanedSocial: SocialLinksData = {
+      youtube: cleanSocialUrl('youtube', social.youtube),
+      facebook: cleanSocialUrl('facebook', social.facebook),
+      x: cleanSocialUrl('x', social.x),
+      tiktok: cleanSocialUrl('tiktok', social.tiktok),
+    };
+    for (const f of SOCIAL_FIELDS) {
+      if (social[f.key].trim() && !cleanedSocial[f.key]) {
+        errs[`social_${f.key}`] = `Enter an https:// ${f.domainHint} link or @handle, or leave empty.`;
+      }
+    }
+
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       setStatus('error');
@@ -82,6 +141,7 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
           whatsappNumber: mpesa.whatsappNumber.replace(/[^\d]/g, ''),
           email: mpesa.email.trim(),
         },
+        social: cleanedSocial,
         giving: {
           ...settings.giving,
           quote: givingQuote.trim(),
@@ -97,6 +157,7 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
           mapsQuery: directions.mapsQuery.trim(),
         },
       });
+      setSocial(cleanedSocial);
       setStatus('saved');
     } catch (err) {
       setStatus('error');
@@ -106,6 +167,7 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
 
   const handleDiscard = () => {
     setMpesa(settings.mpesa);
+    setSocial(settings.social ?? initialChurchSettings.social);
     setGivingQuote(settings.giving.quote);
     setGivingCitation(settings.giving.quoteCitation);
     setDirections(settings.directions);
@@ -278,6 +340,69 @@ export const ContactGivingTab: React.FC<ContactGivingTabProps> = ({
               className={inputCls}
             />
           </Field>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-ink/10 p-4 sm:p-6 space-y-4 shadow-sm">
+        <div>
+          <h3 className="font-display text-lg font-bold text-pine">Social media</h3>
+          <p className="text-xs text-ink/65 mt-0.5">
+            Leave empty to hide. Paste an https:// profile link or type an @handle.
+          </p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          {SOCIAL_FIELDS.map(({ key, label, placeholder, domainHint, brandColorClass, Icon }) => {
+            const raw = social[key] ?? '';
+            const trimmed = raw.trim();
+            const cleaned = cleanSocialUrl(key, raw);
+            const liveInvalid = Boolean(trimmed && !cleaned);
+            const fieldError =
+              errors[`social_${key}`] ||
+              (liveInvalid ? `Must be a valid https:// ${domainHint} link or @handle.` : undefined);
+
+            return (
+              <div key={key} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor={`social-${key}`} className="inline-flex items-center gap-2 text-sm font-bold text-pine">
+                    <Icon size={17} aria-hidden className={brandColorClass} />
+                    <span>{label}</span>
+                  </label>
+                  <span
+                    className={`size-9 rounded-full inline-flex items-center justify-center shrink-0 transition ${
+                      cleaned
+                        ? `bg-sand ${brandColorClass}`
+                        : 'bg-ink/5 text-ink/25'
+                    }`}
+                    title={cleaned ? `Preview: ${cleaned}` : `${label} hidden`}
+                    aria-hidden="true"
+                  >
+                    <Icon size={16} aria-hidden />
+                  </span>
+                </div>
+
+                <input
+                  id={`social-${key}`}
+                  type="text"
+                  value={raw}
+                  placeholder={placeholder}
+                  onChange={(e) => {
+                    setSocial({ ...social, [key]: e.target.value });
+                    markDirty();
+                  }}
+                  className={inputCls}
+                />
+
+                {fieldError ? (
+                  <p className="text-xs font-semibold text-red-700">{fieldError}</p>
+                ) : cleaned && trimmed.startsWith('@') ? (
+                  <p className="text-xs text-pine/80 truncate">Links to: {cleaned}</p>
+                ) : (
+                  <p className="text-xs text-ink/60">Leave empty to hide</p>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

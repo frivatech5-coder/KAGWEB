@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Menu, X, MapPin, Phone, MessageCircle, Copy, Check, Play, Clock, HandHeart, Share2 } from 'lucide-react';
+import { Menu, X, MapPin, Phone, Copy, Check, Play, Clock, HandHeart, Share2 } from 'lucide-react';
+import { FaWhatsapp } from 'react-icons/fa6';
 import type { ChurchSettings } from '../types/church';
+import { hasAnySocialLink } from '../lib/social';
+import { SocialLinks } from './Social';
 
 type S = { settings: ChurchSettings };
 const links = [['Visit', '#visit'], ['Times', '#times'], ['Sermons', '#sermons'], ['Music', '#music'], ['Events', '#events'], ['Give', '#give']];
@@ -354,6 +357,7 @@ export const Give: React.FC<S> = ({ settings }) => {
 export const Visit: React.FC<S> = ({ settings }) => {
   const d = settings.directions, m = settings.mpesa;
   const q = encodeURIComponent(d.mapsQuery);
+  const waDigits = m.whatsappNumber?.replace(/[^\d]/g, '');
   return (
     <Wrap id="visit">
       <Heading hand="We'd love to see you" title="Visit us this Sunday" />
@@ -364,8 +368,13 @@ export const Visit: React.FC<S> = ({ settings }) => {
           <div className="flex flex-wrap gap-3 pt-2">
             <a className="btn btn-clay" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/dir/?api=1&destination=${q}`}>Get directions</a>
             <a className="btn btn-line text-pine" href={`tel:${m.pastorContactPhone.replace(/\s/g, '')}`}><Phone size={18} /> Call</a>
-            <a className="btn btn-line text-pine" target="_blank" rel="noreferrer" href={`https://wa.me/${m.whatsappNumber}`}><MessageCircle size={18} /> WhatsApp</a>
+            {waDigits && (
+              <a className="btn btn-line text-pine" target="_blank" rel="noopener noreferrer" href={`https://wa.me/${waDigits}`}>
+                <FaWhatsapp size={19} aria-hidden="true" /> WhatsApp
+              </a>
+            )}
           </div>
+          <SocialLinks social={settings.social} churchName={settings.churchName} size="sm" variant="color" className="pt-1" />
         </div>
         <iframe title="Map to the church" loading="lazy" className="w-full h-72 md:h-full min-h-72 rounded-2xl border-0 shadow-md"
           src={`https://maps.google.com/maps?q=${q}&output=embed`} />
@@ -374,34 +383,54 @@ export const Visit: React.FC<S> = ({ settings }) => {
   );
 };
 
-export const Footer: React.FC<S & { onPrayer: () => void; onAdmin: () => void }> = ({ settings, onPrayer, onAdmin }) => (
-  <footer className="bg-ink text-white/80 py-12">
-    <div className="mx-auto max-w-5xl px-5 grid sm:grid-cols-2 gap-8">
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="bg-paper rounded-lg p-1 shrink-0">
-            <img
-              src="/assets/aistudio/Screenshot_2026-11-06_4.43.00_PM_71c4dc47.png"
-              alt="Kenya Assemblies of God logo"
-              loading="lazy"
-              width={40}
-              height={40}
-              className="h-10 w-10 object-contain brightness-110 contrast-125 mix-blend-multiply"
-            />
+export const Footer: React.FC<S & { onPrayer: () => void; onAdmin: () => void }> = ({ settings, onPrayer, onAdmin }) => {
+  const showSocial = hasAnySocialLink(settings.social);
+  return (
+    <footer className="bg-ink text-white/80 py-12">
+      <div className="mx-auto max-w-5xl px-5 grid sm:grid-cols-2 gap-8">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="bg-paper rounded-lg p-1 shrink-0">
+              <img
+                src="/assets/aistudio/Screenshot_2026-11-06_4.43.00_PM_71c4dc47.png"
+                alt="Kenya Assemblies of God logo"
+                loading="lazy"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain brightness-110 contrast-125 mix-blend-multiply"
+              />
+            </div>
+            <p className="font-display text-2xl text-white">{settings.churchName}</p>
           </div>
-          <p className="font-display text-2xl text-white">{settings.churchName}</p>
+          <p className="mt-2">{settings.footer.summary}</p>
+          <p className="mt-3 font-hand text-xl text-gold">{settings.annualTheme}</p>
         </div>
-        <p className="mt-2">{settings.footer.summary}</p>
-        <p className="mt-3 font-hand text-xl text-gold">{settings.annualTheme}</p>
+        <div className="sm:text-right space-y-1">
+          <p>{settings.mpesa.email}</p><p>{settings.mpesa.pastorContactPhone}</p>
+          <button onClick={onPrayer} className="underline underline-offset-4 hover:text-white">Send a prayer request</button>
+        </div>
       </div>
-      <div className="sm:text-right space-y-1">
-        <p>{settings.mpesa.email}</p><p>{settings.mpesa.pastorContactPhone}</p>
-        <button onClick={onPrayer} className="underline underline-offset-4 hover:text-white">Send a prayer request</button>
+
+      {showSocial && (
+        <div className="mx-auto max-w-5xl px-5 mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-center sm:text-left">
+          <div>
+            <p className="font-hand text-2xl text-gold leading-none">Stay connected</p>
+            <p className="text-sm text-white/65 mt-1">Follow us</p>
+          </div>
+          <SocialLinks
+            social={settings.social}
+            churchName={settings.churchName}
+            size="md"
+            variant="light"
+            className="justify-center sm:justify-end"
+          />
+        </div>
+      )}
+
+      <div className="mx-auto max-w-5xl px-5 mt-8 pt-5 border-t border-white/10 text-sm flex justify-between text-white/50">
+        <span>© {new Date().getFullYear()} KAG Emmanuel Witima</span>
+        <button onClick={onAdmin} className="hover:text-white">Admin</button>
       </div>
-    </div>
-    <div className="mx-auto max-w-5xl px-5 mt-10 pt-5 border-t border-white/10 text-sm flex justify-between text-white/50">
-      <span>© {new Date().getFullYear()} KAG Emmanuel Witima</span>
-      <button onClick={onAdmin} className="hover:text-white">Admin</button>
-    </div>
-  </footer>
-);
+    </footer>
+  );
+};

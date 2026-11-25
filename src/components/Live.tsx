@@ -10,7 +10,8 @@ import {
   Video,
   X,
 } from 'lucide-react';
-import type { LiveStatus } from '../types/church';
+import { FaYoutube } from 'react-icons/fa6';
+import type { LiveStatus, SocialLinksData } from '../types/church';
 import {
   buildEmbedUrl,
   buildServiceIcs,
@@ -18,6 +19,7 @@ import {
   buildYouTubeWatchUrl,
   parseMeetUrl,
 } from '../lib/live';
+import { cleanSocialUrl } from '../lib/social';
 import { Reveal } from './Site';
 
 export const LiveBanner: React.FC<{
@@ -101,9 +103,10 @@ function formatTimeZones(iso: string) {
   return { localTime, kenyaTime };
 }
 
-export const LiveSection: React.FC<{ live: LiveStatus; churchName: string }> = ({
+export const LiveSection: React.FC<{ live: LiveStatus; churchName: string; social?: SocialLinksData }> = ({
   live,
   churchName,
+  social,
 }) => {
   const sectionRef = useRef<HTMLElement>(null);
   const [nearViewport, setNearViewport] = useState(false);
@@ -176,6 +179,8 @@ export const LiveSection: React.FC<{ live: LiveStatus; churchName: string }> = (
 
   const embedUrl = buildEmbedUrl(live);
   const watchUrl = buildYouTubeWatchUrl(live);
+  const youtubeChannelUrl = cleanSocialUrl('youtube', social?.youtube ?? '');
+  const youtubeButtonUrl = watchUrl || youtubeChannelUrl;
   const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
   const chatUrl = buildYouTubeChatUrl(live, hostname);
   const meetUrl = parseMeetUrl(live.meetUrl);
@@ -336,15 +341,15 @@ export const LiveSection: React.FC<{ live: LiveStatus; churchName: string }> = (
 
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap gap-3">
-                  {watchUrl && (
+                  {youtubeButtonUrl && (
                     <a
-                      href={watchUrl}
+                      href={youtubeButtonUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn btn-clay"
                     >
-                      <ExternalLink size={17} />
-                      <span>Open on YouTube</span>
+                      <FaYoutube size={20} aria-hidden="true" />
+                      <span>Watch on YouTube</span>
                     </a>
                   )}
                   {chatUrl && (

@@ -142,6 +142,13 @@ export interface FooterContent {
   grandHeadline: string;
 }
 
+export interface SocialLinksData {
+  youtube: string;
+  facebook: string;
+  x: string;
+  tiktok: string;
+}
+
 export interface ChurchSettings {
   churchName: string;
   pastorName: string;
@@ -149,6 +156,7 @@ export interface ChurchSettings {
   annualTheme: string;
   themeScripture: string;
   mpesa: MpesaDetails;
+  social: SocialLinksData;
   hero: HeroContent;
   scripture: ScriptureContent;
   story: StoryContent;

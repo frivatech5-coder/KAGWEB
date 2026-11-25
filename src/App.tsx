@@ -48,6 +48,10 @@ export function mergeSettingsWithDefaults(remote: Partial<ChurchSettings> | null
       ...initialChurchSettings.mpesa,
       ...(remote.mpesa || {}),
     },
+    social: {
+      ...initialChurchSettings.social,
+      ...(remote.social || {}),
+    },
     hero: {
       ...initialChurchSettings.hero,
       ...(remote.hero || {}),
@@ -241,7 +245,7 @@ export default function App() {
       />
       <main>
         <Hero settings={settings} onPrayer={openPrayer} />
-        <LiveSection live={liveStatus} churchName={settings.churchName} />
+        <LiveSection live={liveStatus} churchName={settings.churchName} social={settings.social} />
         <Welcome settings={settings} />
         <Times settings={settings} />
         <Sermons settings={settings} />
