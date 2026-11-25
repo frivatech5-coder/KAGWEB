@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApp, getApps } from 'firebase/app';
 import {
   getAuth,
   GoogleAuthProvider,
@@ -10,6 +10,7 @@ import {
   User,
 } from 'firebase/auth';
 import {
+  initializeFirestore,
   getFirestore,
   doc,
   getDoc,
@@ -27,9 +28,23 @@ import firebaseConfig from '../../firebase-applet-config.json';
 import { ChurchSettings, LiveStatus } from '../types/church';
 import { initialLiveStatus } from '../data/defaultChurchData';
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firebase safely once
+const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+function createFirestoreDb() {
+  try {
+    // Force long-polling to prevent WebChannel chunked-stream failures in proxied/iframe previews
+    return initializeFirestore(
+      app,
+      { experimentalForceLongPolling: true },
+      firebaseConfig.firestoreDatabaseId
+    );
+  } catch {
+    return getFirestore(app, firebaseConfig.firestoreDatabaseId);
+  }
+}
+
+export const db = createFirestoreDb();
 export const auth = getAuth(app);
 
 // Primary church admin emails (lowercase) — also update firestore.rules and storage.rules
@@ -96,13 +111,13 @@ export function isPermissionDeniedError(error: unknown): boolean {
   );
 }
 
-// Validate connection
+// Validate connection using a publicly readable document
 export async function testConnection() {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDocFromServer(doc(db, 'settings', 'witima_config'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
+      console.warn('Firestore client is temporarily offline; using local cached content.');
     }
   }
 }
@@ -177,11 +192,15 @@ export function subscribeToChurchSettings(
       }
     },
     (error) => {
-      try {
-        handleFirestoreError(error, OperationType.GET, `${SETTINGS_DOC_PATH}/${SETTINGS_DOC_ID}`);
-      } catch (wrapped) {
-        if (onError) onError(wrapped instanceof Error ? wrapped : new Error(String(wrapped)));
+      if (isPermissionDeniedError(error)) {
+        try {
+          handleFirestoreError(error, OperationType.GET, `${SETTINGS_DOC_PATH}/${SETTINGS_DOC_ID}`);
+        } catch (wrapped) {
+          if (onError) onError(wrapped instanceof Error ? wrapped : new Error(String(wrapped)));
+        }
+        return;
       }
+      if (onError) onError(error instanceof Error ? error : new Error(String(error)));
     }
   );
 }
