@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Check, Link2, Music2, Pause, Pencil, Play, Upload, X, AlertCircle } from 'lucide-react';
+import { Check, Link2, Loader2, Music2, Pause, Pencil, Play, Upload, X, AlertCircle } from 'lucide-react';
 import {
   addTrackByLink,
   deleteTrack,
@@ -9,6 +9,7 @@ import {
   uploadTrack,
   type MusicTrack,
 } from '../../lib/firebase';
+import { getGoogleDrivePreviewUrl, getPlayableAudioUrl } from '../../lib/audio';
 import { ConfirmDeleteButton, Field, formatAdminError, inputCls } from './AdminShared';
 
 const MAX_AUDIO_BYTES = 40 * 1024 * 1024;
@@ -31,6 +32,8 @@ export const MusicTab: React.FC = () => {
   const [linkError, setLinkError] = useState<string | null>(null);
 
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [bufferingId, setBufferingId] = useState<string | null>(null);
+  const [previewFallbackId, setPreviewFallbackId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editArtist, setEditArtist] = useState('');
@@ -146,15 +149,35 @@ export const MusicTab: React.FC = () => {
   };
 
   const togglePlay = (track: MusicTrack) => {
+    const playableUrl = getPlayableAudioUrl(track.url);
+    if (!playableUrl) return;
+    if (previewFallbackId === track.id) {
+      setPreviewFallbackId(null);
+      return;
+    }
     const audio = audioRef.current;
-    if (!audio || !track.url?.trim()) return;
+    if (!audio) return;
     if (playingId === track.id) {
       audio.pause();
       setPlayingId(null);
       return;
     }
-    audio.src = track.url.trim();
-    audio.play().then(() => setPlayingId(track.id)).catch(() => setPlayingId(null));
+    setPreviewFallbackId(null);
+    setBufferingId(track.id);
+    audio.src = playableUrl;
+    audio
+      .play()
+      .then(() => {
+        setPlayingId(track.id);
+        setBufferingId(null);
+      })
+      .catch(() => {
+        setPlayingId(null);
+        setBufferingId(null);
+        if (getGoogleDrivePreviewUrl(track.url)) {
+          setPreviewFallbackId(track.id);
+        }
+      });
   };
 
   const startEdit = (track: MusicTrack) => {
@@ -198,7 +221,15 @@ export const MusicTab: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <audio ref={audioRef} onEnded={() => setPlayingId(null)} preload="none" />
+      <audio
+        ref={audioRef}
+        onEnded={() => {
+          setPlayingId(null);
+          setBufferingId(null);
+        }}
+        onCanPlay={() => setBufferingId(null)}
+        preload="none"
+      />
 
       <div>
         <h2 className="font-display text-2xl font-bold text-pine">Worship & Choir Music</h2>
@@ -417,6 +448,7 @@ export const MusicTab: React.FC = () => {
         <ul className="space-y-3">
           {tracks?.map((track) => {
             const isEditing = editingId === track.id;
+            const previewUrl = previewFallbackId === track.id ? getGoogleDrivePreviewUrl(track.url) : null;
             return (
               <li key={track.id} className="bg-white rounded-2xl border border-ink/10 p-4 shadow-sm space-y-3">
                 <div className="flex items-start sm:items-center gap-3">
@@ -426,7 +458,13 @@ export const MusicTab: React.FC = () => {
                     aria-label={`${playingId === track.id ? 'Pause' : 'Play'} ${track.title}`}
                     className="shrink-0 size-12 rounded-full bg-pine text-white grid place-items-center hover:bg-clay transition"
                   >
-                    {playingId === track.id ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
+                    {bufferingId === track.id ? (
+                      <Loader2 size={20} className="animate-spin" />
+                    ) : playingId === track.id ? (
+                      <Pause size={20} />
+                    ) : (
+                      <Play size={20} className="ml-0.5" />
+                    )}
                   </button>
 
                   <div className="min-w-0 flex-1">
@@ -437,6 +475,15 @@ export const MusicTab: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                {previewUrl && (
+                  <iframe
+                    src={previewUrl}
+                    title={`Listen to ${track.title}`}
+                    allow="autoplay"
+                    className="w-full h-16 rounded-xl border border-ink/10 bg-paper"
+                  />
+                )}
 
                 {isEditing ? (
                   <div className="pt-2 border-t border-ink/10 space-y-3">
